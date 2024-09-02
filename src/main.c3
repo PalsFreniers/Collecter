@@ -1,14 +1,15 @@
 module collecter;
 import std;
 import std::collections::list;
-
-fault CollectionFault {
-        END_OF_ARGS,
-        FAULTED,
-}
+import collecter::string;
 
 fn int! getNextCollection(String[] args, Collection *c) {
         if(args.len == 0) return CollectionFault.END_OF_ARGS?;
+        String name = args[0];
+        switch(name) {
+                case "string":
+                        *c = string::new();
+        }
         return 1;
 }
 
