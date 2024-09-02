@@ -1,7 +1,8 @@
 C3 = c3c
-SRCS =  src/main.c3
-SRCS += src/tests/tests_launch.c3 \
-	src/tests/tests_get_next_collection.c3
+SRCS =  src/main.c3 \
+        src/collections.c3 \
+        src/utils.c3
+SRCS += src/string/string.c3
 NAME = collecter
 
 all: $(NAME) test bench
