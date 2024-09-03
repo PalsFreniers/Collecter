@@ -2,7 +2,10 @@ module collecter::collection;
 import std::io::file;
 
 fault CollectionFault {
+        NOT_ENOUGH_ARGUMENT,
         UNABLE_TO_OPEN_FILE,
+        BAD_STRUCTURE_NAME,
+        UNKNOWN_OPTION,
         END_OF_ARGS,
         FAULTED,
 }

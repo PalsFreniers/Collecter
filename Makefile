@@ -5,10 +5,10 @@ SRCS =  src/main.c3 \
 SRCS += src/string/string.c3
 NAME = collecter
 
-all: $(NAME) test bench
+all: $(NAME)
 
 $(NAME): $(SRCS)
-	$(C3) compile $(SRCS) -o $(NAME)
+	$(C3) compile $(SRCS) -o $(NAME) -g
 
 test: $(SRCS)
 	$(C3) compile-test $(SRCS) -o $(NAME)
