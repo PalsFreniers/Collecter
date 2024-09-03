@@ -10,7 +10,7 @@ fn CollectionString *new() {
         CollectionString *ret = mem::new(CollectionString);
         ret.name = "String".copy();
         ret.upperName = ret.name.copy();
-        ret.upperName.convert_ascii_to_lower();
+        ret.upperName.convert_ascii_to_upper();
         return ret;
 }
 
@@ -31,6 +31,7 @@ fn void CollectionString.makeHeader(&self) @dynamic {
         self.header.printf("\n");
         self.header.printf("#include <stdint.h>\n");
         self.header.printf("#include <stdbool.h>\n");
+        self.header.printf("#include <string.h>\n");
         self.header.printf("\n");
         self.header.printf("#define %s_zero() (struct %s){0}\n", self.name, self.name);
         self.header.printf("#define %s_len(s) (s).len\n", self.name);
@@ -65,6 +66,7 @@ fn void CollectionString.makeError(&self) @dynamic {
         self.header.printf("\n");
 
         File f = self.createNew("_errors.c");
+        defer f.close()!!;
         @pool() {
                 f.printf("#include \"%s.h\"\n", self.name.temp_ascii_to_lower());
         };
@@ -78,15 +80,14 @@ fn void CollectionString.makeError(&self) @dynamic {
         f.printf("                default: return \"%s Unknown Error\";\n", self.name);
         f.printf("        }\n");
         f.printf("}\n");
-        f.close()!!;
 }
 
 fn void CollectionString.makeMethods(&self) @dynamic {
         self.makeConstructors();
         self.makeCharOp();
+        self.makeCharPointerOp();
         self.makeUtils();
 }
-
 
 fn void CollectionString.end(&self) @dynamic {
         self.header.printf("#endif // %s_H", self.upperName);
@@ -100,7 +101,7 @@ fn void CollectionString.setName(&self, String name) @dynamic {
         self.upperName.free();
         self.name = name.copy();
         self.upperName = self.name.copy();
-        self.upperName.convert_ascii_to_lower();
+        self.upperName.convert_ascii_to_upper();
 }
 
 fn void CollectionString.makeConstructorProto(self, String constructor) {
@@ -120,11 +121,11 @@ fn void CollectionString.makeConstructors(self) {
         self.header.printf("\n");
 
         File f = self.createNew("_constructors.c");
+        defer f.close()!!;
         @pool() {
                 f.printf("#include \"%s.h\"\n", self.name.temp_ascii_to_lower());
         };
         f.printf("#include <stdlib.h>\n");
-        f.printf("#include <string.h>\n");
         self.makeConstructorDef(f, "newFromCstr(char *ptr)");
         f.printf("        return (struct %s) {\n", self.name);
         f.printf("                .len = strlen(ptr),\n");
@@ -172,12 +173,12 @@ fn void CollectionString.makeConstructors(self) {
         f.printf("        };\n");
         f.printf("}\n");
         f.printf("\n");
-        f.close()!!;
 }
 
 fn void CollectionString.makeUtils(self) {
         self.header.printf("void %s_grow(struct %s *self);\n", self.name, self.name);
-        File f = self.createNew("_char_op.c");
+        File f = self.createNew("_utils.c");
+        defer f.close()!!;
         @pool() {
                 f.printf("#include \"%s.h\"\n", self.name.temp_ascii_to_lower());
         };
@@ -185,9 +186,9 @@ fn void CollectionString.makeUtils(self) {
         f.printf("\n");
         f.printf("#define DEFAULT_%s_CAPACITY 1024\n", self.upperName);
         f.printf("\n");
-        f.printf("void %s_grow(struct %s *self) {\n");
+        f.printf("void %s_grow(struct %s *self) {\n", self.name, self.name);
         f.printf("        if(!self->owned) {\n");
-        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n");
+        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n", self.name, self.upperName);
         f.printf("                return;\n");
         f.printf("        }\n");
         f.printf("        if(self->ptr == NULL || self->capacity == 0) self->capacity = DEFAULT_%s_CAPACITY;\n", self.upperName);
@@ -198,55 +199,72 @@ fn void CollectionString.makeUtils(self) {
 }
 
 fn void CollectionString.makeCharOp(self) {
-        // push pop pushBack popBack
         self.header.printf("char %s_pop(struct %s *self);\n", self.name, self.name);
         self.header.printf("char %s_popBack(struct %s *self);\n", self.name, self.name);
         self.header.printf("void %s_push(struct %s *self, char c);\n", self.name, self.name);
         self.header.printf("void %s_pushBack(struct %s *self, char c);\n", self.name, self.name);
 
         File f = self.createNew("_char_op.c");
+        defer f.close()!!;
         @pool() {
                 f.printf("#include \"%s.h\"\n", self.name.temp_ascii_to_lower());
         };
-        f.printf("#include <string.h>\n");
         f.printf("\n");
         f.printf("char %s_pop(struct %s *self) {\n", self.name, self.name);
         f.printf("        if(!self->owned) {\n");
-        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n");
+        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n", self.name, self.upperName);
         f.printf("                return 0;\n");
         f.printf("        }\n");
         f.printf("        if(self->ptr == NULL || self->len == self->capacity) %s_grow(self);\n", self.name);
         f.printf("        if(g_%sError != %s_SUCCESS) return 0;\n", self.name, self.upperName);
-        f.printf("        c = self->ptr[0];\n");
+        f.printf("        char c = self->ptr[0];\n");
         f.printf("        memmove(self->ptr, self->ptr + 1, --self->len);\n");
         f.printf("        return c;\n");
+        f.printf("}\n");
         f.printf("\n");
         f.printf("char %s_popBack(struct %s *self) {\n", self.name, self.name);
         f.printf("        if(!self->owned) {\n");
-        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n");
+        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n", self.name, self.upperName);
         f.printf("                return 0;\n");
         f.printf("        }\n");
         f.printf("        if(self->ptr == NULL || self->len == self->capacity) %s_grow(self);\n", self.name);
         f.printf("        if(g_%sError != %s_SUCCESS) return 0;\n", self.name, self.upperName);
         f.printf("        return self->ptr[self->len--];\n");
+        f.printf("}\n");
         f.printf("\n");
         f.printf("void %s_push(struct %s *self, char c) {\n", self.name, self.name);
         f.printf("        if(!self->owned) {\n");
-        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n");
+        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n", self.name, self.upperName);
         f.printf("                return;\n");
         f.printf("        }\n");
         f.printf("        if(self->ptr == NULL || self->len == self->capacity) %s_grow(self);\n", self.name);
         f.printf("        if(g_%sError != %s_SUCCESS) return;\n", self.name, self.upperName);
         f.printf("        memmove(self->ptr + 1, self->ptr, self->len++);\n");
         f.printf("        self->ptr[0] = c;\n");
+        f.printf("}\n");
         f.printf("\n");
-        f.printf("void %s_popBack(struct %s *self, char c) {\n", self.name, self.name);
+        f.printf("void %s_pushBack(struct %s *self, char c) {\n", self.name, self.name);
         f.printf("        if(!self->owned) {\n");
-        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n");
+        f.printf("                g_%sError = %s_MODIFY_UNWONED;\n", self.name, self.upperName);
         f.printf("                return;\n");
         f.printf("        }\n");
         f.printf("        if(self->ptr == NULL || self->len == self->capacity) %s_grow(self);\n", self.name);
         f.printf("        if(g_%sError != %s_SUCCESS) return;\n", self.name, self.upperName);
         f.printf("        self->ptr[self->len++] = c;\n");
-        f.close()!!;
+        f.printf("}\n");
+}
+
+fn void CollectionString.makeCharPointerOp(self) {
+        // append insert erease find 
+        self.header.printf("void %s_append(struct %s *self, struct %s other);\n", self.name, self.name, self.name);
+        self.header.printf("uint64_t %s_find(struct %s *self, struct %s *needle);\n", self.name, self.name, self.name);
+        self.header.printf("void %s_erease(struct %s *self, uint64_t start, uint64_t len);\n", self.name, self.name);
+        self.header.printf("void %s_insert(struct %s *self, struct %s other, uint64_t pos);\n", self.name, self.name, self.name);
+
+        File f = self.createNew("_char_p_op.c");
+        defer f.close()!!;
+        @pool() {
+                f.printf("#include \"%s.h\"\n", self.name.temp_ascii_to_lower());
+        };
+        f.printf("\n");
 }
